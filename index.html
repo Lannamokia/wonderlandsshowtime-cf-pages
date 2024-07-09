@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wonderhoy！！！</title>
+    <style>
+        .zoom {
+            cursor: pointer;
+            animation-play-state: paused; /* 初始状态为暂停 */
+            position: absolute;
+        }
+
+        @keyframes zoom {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(var(--zoom-scale, 1.1)); }
+        }
+
+        #audioPlayer {
+            display: none; /* 隐藏音频控件 */
+        }
+
+        #randomizeButton {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: deepskyblue; /* 天蓝色 */
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 10px; /* 圆角矩形 */
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000; /* 置于顶层 */
+        }
+
+        #alertBox {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 5px;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <audio id="audioPlayer" src="a.mp3" loop></audio>
+    <img id="randomImage" class="zoom" src="" alt="Random Image">
+    <button id="randomizeButton">重新选择图片</button>
+    <div id="alertBox">点击图片开始或暂停播放</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var audio = document.getElementById('audioPlayer');
+            var imageElement = document.getElementById('randomImage');
+            var randomizeButton = document.getElementById('randomizeButton');
+            var alertBox = document.getElementById('alertBox');
+
+            function loadRandomImage() {
+                return new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    function tryLoadImage() {
+                        if (attempts >= 99) {
+                            reject('无法找到有效的图片');
+                            return;
+                        }
+                        var randomIndex = Math.floor(Math.random() * 99) + 1;
+                        var img = new Image();
+                        img.src = randomIndex + '.jpg';
+                        img.onload = function() {
+                            resolve(img.src);
+                        };
+                        img.onerror = function() {
+                            attempts++;
+                            tryLoadImage();
+                        };
+                    }
+                    tryLoadImage();
+                });
+            }
+
+            function showAlertBox(message, duration) {
+                alertBox.textContent = message;
+                alertBox.style.display = 'block';
+                setTimeout(function() {
+                    alertBox.style.display = 'none';
+                }, duration);
+            }
+
+            function adjustImagePosition() {
+                var windowWidth = window.innerWidth;
+                var windowHeight = window.innerHeight;
+                var imageWidth = imageElement.naturalWidth;
+                var imageHeight = imageElement.naturalHeight;
+                var maxScale = 1.1;
+
+                // 计算缩放后图片的尺寸
+                var scaledWidth = imageWidth * maxScale;
+                var scaledHeight = imageHeight * maxScale;
+
+                // 检查是否需要调整图片位置
+                if (scaledWidth > windowWidth - 300 || scaledHeight > windowHeight - 300) {
+                    // 确保图片在缩放后不会超出窗口边界，并且距离边界至少150像素
+                    var maxWidth = windowWidth - 300; // 减去两边各150像素
+                    var maxHeight = windowHeight - 300; // 减去上下各150像素
+
+                    if (scaledWidth > maxWidth) {
+                        maxScale = maxWidth / imageWidth;
+                    }
+                    if (scaledHeight > maxHeight) {
+                        maxScale = Math.min(maxScale, maxHeight / imageHeight);
+                    }
+                }
+
+                var left = (windowWidth - imageWidth) / 2;
+                var top = (windowHeight - imageHeight) / 2;
+
+                imageElement.style.left = left + 'px';
+                imageElement.style.top = top + 'px';
+                imageElement.style.width = imageWidth + 'px';
+                imageElement.style.height = imageHeight + 'px';
+
+                imageElement.style.setProperty('--zoom-scale', maxScale);
+            }
+
+            loadRandomImage().then(src => {
+                imageElement.src = src;
+                showAlertBox('点击图片开始或暂停播放', 3000);
+                imageElement.onload = adjustImagePosition;
+            }).catch(error => {
+                console.error(error);
+            });
+
+            var isPaused = true;
+            imageElement.addEventListener('click', function() {
+                if (isPaused) {
+                    audio.play().catch(function(error) {
+                        console.log('oops');
+                    });
+                    imageElement.style.animation = 'zoom 2s infinite';
+                    imageElement.style.animationPlayState = 'running';
+                } else {
+                    audio.pause();
+                    imageElement.style.animationPlayState = 'paused';
+                }
+                isPaused = !isPaused;
+            });
+
+            randomizeButton.addEventListener('click', function() {
+                loadRandomImage().then(src => {
+                    imageElement.src = src;
+                    imageElement.onload = adjustImagePosition;
+                }).catch(error => {
+                    console.error(error);
+                });
+            });
+
+            window.addEventListener('resize', adjustImagePosition);
+        });
+    </script>
+</body>
+</html>
